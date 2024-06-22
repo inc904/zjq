@@ -15,9 +15,9 @@
   </head>
   <body>
     <div id="app" class="container">
-      <h2 class="text-center my-3">电费差价计算器</h2>
+      <h2 class="text-center my-2 fs-3">电费差价计算器</h2>
       <div v-for="(tenant, index) in tenants" :key="index" class="mb-2">
-        <h4 class="me-3">租户{{ index + 1 }}:</h4>
+        <h4 class="me-3 fs-4">租户{{ index + 1 }}:</h4>
         <div class="d-flex flex-wrap align-items-center">
           <div class="me-3">
             <label :for="'previousReading' + index" class="form-label">上次读数:</label>
@@ -49,31 +49,32 @@
 
       <div class="mb-2">
         <label class="form-label" for="price-per-unit">电费单价(元/度):</label>
-        <input
-          class="form-control"
-          id="price-per-unit"
-          v-model.number="pricePerUnit"
-          type="number"
-          step="0.01"
-          placeholder="请输入电费单价" />
-      </div>
-
-      <div class="container text-center">
-        <button type="button" class="btn btn-success" @click="calculate">计算差价</button>
+        <div class="d-flex">
+          <input
+            class="form-control me-5"
+            style="width: 100px"
+            id="price-per-unit"
+            v-model.number="pricePerUnit"
+            type="number"
+            step="0.01"
+            placeholder="请输入电费单价" />
+          <button type="button" class="btn btn-success" @click="calculate">计算差价</button>
+        </div>
       </div>
 
       <div v-if="showResults">
-        <h3>结果:</h3>
+        <h3 class="fs-4">结果:</h3>
 
         <ul class="list-group">
           <li class="list-group-item">总用量：{{ totalUsage.toFixed(2) }}</li>
           <li class="list-group-item">平均值：{{ averageUsage.toFixed(2) }}</li>
 
           <li class="list-group-item" v-for="(item, index) in differences" :key="index">
-            <span class="badge text-bg-primary">租户{{ index + 1 }}</span>:
-            {{ item.gt(0) ? '超过平均值' : '低于平均值' }} {{ item.abs().toFixed(2) }}
-            <span class="badge bg-secondary ms-2">
-              ({{ item.abs().toFixed(2) }} 度 * {{ pricePerUnit.toFixed(2) }} 元/度 = {{ item.abs().times(pricePerUnit).toFixed(2) }} 元)
+            <span class="badge text-bg-primary">租户{{ index + 1 }}</span> :
+            <span class="ms-2 me-2"> {{ item.gt(0) ? '超过平均值' : '低于平均值' }} {{ item.abs().toFixed(2) }}</span>
+            <span class="badge bg-secondary">
+              ({{ item.abs().toFixed(2) }} 度 * {{ pricePerUnit.toFixed(2) }} 元/度 = {{
+              item.abs().times(pricePerUnit).toFixed(2) }} 元)
             </span>
           </li>
 
