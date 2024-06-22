@@ -151,8 +151,8 @@
                 if (pos.diff.gt(0) && neg.diff.gt(0)) {
                   const paymentAmount = BigNumber.minimum(pos.diff, neg.diff).times(ppu)
                   payments.value.push({
-                    from: neg.index,
-                    to: pos.index,
+                    from: pos.index,
+                    to: neg.index,
                     amount: paymentAmount,
                   })
                   pos.diff = pos.diff.minus(paymentAmount.dividedBy(ppu))
