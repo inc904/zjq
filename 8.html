@@ -40,7 +40,7 @@
             <input
               class="form-control"
               :id="'usage' + index"
-              :value="calculateUsage(tenant.previousReading, tenant.currentReading)"
+              :value="calculateUsage(tenant.previousReading, tenant.currentReading).toFixed(2)"
               disabled
               style="width: 100px" />
           </div>
@@ -66,18 +66,18 @@
         <h3>结果:</h3>
 
         <ul class="list-group">
-          <li class="list-group-item">总用量：{{ totalUsage }}</li>
-          <li class="list-group-item">平均值：{{ averageUsage }}</li>
+          <li class="list-group-item">总用量：{{ totalUsage.toFixed(2) }}</li>
+          <li class="list-group-item">平均值：{{ averageUsage.toFixed(2) }}</li>
 
           <li class="list-group-item" v-for="(item, index) in differences" :key="index">
-            <span class="badge text-bg-primary">租户{{ index + 1 }}</span>: {{ item > 0 ? '超过平均值' : '低于平均值' }}
-            {{ Math.abs(item) }}
+            <span class="badge text-bg-primary">租户{{ index + 1 }}</span>: {{ item.gt(0) ? '超过平均值' : '低于平均值' }}
+            {{ item.abs().toFixed(2) }}
           </li>
 
           <li class="list-group-item" v-for="(item, index) in payments" :key="index">
             <span class="badge text-bg-primary">租户{{ item.from }}</span> 需要支付给
             <span class="badge text-bg-primary">租户{{ item.to }}</span>:
-            <span class="badge text-bg-danger">{{ Math.abs(item.amount).toFixed(2) }}</span>元
+            <span class="badge text-bg-danger">{{ item.amount.abs().toFixed(2) }}</span>元
           </li>
         </ul>
       </div>
@@ -92,29 +92,31 @@
           const pricePerUnit = ref(0.56)
 
           const tenants = reactive([
-            { previousReading: 1, currentReading: 30 },
-            { previousReading: 2, currentReading: 20 },
-            { previousReading: 3, currentReading: 30 },
+            { previousReading: 12.22, currentReading: 30.23 },
+            { previousReading: 2.1, currentReading: 20.4 },
+            { previousReading: 3.5, currentReading: 30.8 },
           ])
 
           const calculateUsage = (previous, current) => {
-            return Math.max(0, current - previous)
+            const previousReading = new BigNumber(previous)
+            const currentReading = new BigNumber(current)
+            return BigNumber.maximum(currentReading.minus(previousReading), 0)
           }
 
           const totalUsage = computed(() => {
             return tenants.reduce((sum, tenant) => {
-              return sum + calculateUsage(tenant.previousReading, tenant.currentReading)
-            }, 0)
+              return sum.plus(calculateUsage(tenant.previousReading, tenant.currentReading))
+            }, new BigNumber(0))
           })
 
           const averageUsage = computed(() => {
-            return new BigNumber(totalUsage.value).dividedBy(tenants.length).toFixed(2)
+            return totalUsage.value.dividedBy(tenants.length)
           })
 
           const differences = computed(() => {
             return tenants.map(tenant => {
               const usage = calculateUsage(tenant.previousReading, tenant.currentReading)
-              return Number(BigNumber(usage).minus(averageUsage.value))
+              return usage.minus(averageUsage.value)
             })
           })
 
@@ -125,32 +127,32 @@
             payments.value = []
             showResults.value = false
 
-            const ppu = Number(pricePerUnit.value)
+            const ppu = new BigNumber(pricePerUnit.value)
 
             // 初始化支付数组
             let positiveDiffs = []
             let negativeDiffs = []
 
             differences.value.forEach((diff, index) => {
-              if (diff > 0) {
+              if (diff.gt(0)) {
                 positiveDiffs.push({ index: index + 1, diff: diff })
-              } else if (diff < 0) {
-                negativeDiffs.push({ index: index + 1, diff: Math.abs(diff) })
+              } else if (diff.lt(0)) {
+                negativeDiffs.push({ index: index + 1, diff: diff.abs() })
               }
             })
 
             // 计算支付金额
             positiveDiffs.forEach(pos => {
               negativeDiffs.forEach(neg => {
-                if (pos.diff > 0 && neg.diff > 0) {
-                  const paymentAmount = Math.min(pos.diff, neg.diff) * ppu
+                if (pos.diff.gt(0) && neg.diff.gt(0)) {
+                  const paymentAmount = BigNumber.minimum(pos.diff, neg.diff).times(ppu)
                   payments.value.push({
-                    from: pos.index,
-                    to: neg.index,
+                    from: neg.index,
+                    to: pos.index,
                     amount: paymentAmount,
                   })
-                  pos.diff -= paymentAmount / ppu
-                  neg.diff -= paymentAmount / ppu
+                  pos.diff = pos.diff.minus(paymentAmount.dividedBy(ppu))
+                  neg.diff = neg.diff.minus(paymentAmount.dividedBy(ppu))
                 }
               })
             })
