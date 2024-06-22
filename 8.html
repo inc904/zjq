@@ -54,7 +54,7 @@
         <h3>结果:</h3>
 
         <ul class="list-group">
-          <li class="list-group-item">总用量：{{ totalUsage}}</li>
+          <li class="list-group-item">总用量：{{ totalUsage }}</li>
           <li class="list-group-item">平均值：{{ averageUsage }}</li>
 
           <li class="list-group-item" v-for="(item, index) in differences" :key="index">
@@ -129,8 +129,8 @@
                 if (pos.diff > 0 && neg.diff > 0) {
                   const paymentAmount = Math.min(pos.diff, neg.diff) * ppu
                   payments.value.push({
-                    from: neg.index,
-                    to: pos.index,
+                    from: pos.index,
+                    to: neg.index,
                     amount: paymentAmount,
                   })
                   pos.diff -= paymentAmount / ppu
