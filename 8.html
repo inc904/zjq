@@ -31,8 +31,8 @@
       </div>
 
       <div class="mb-2">
-        <label class="form-label" for="tenant2Usage">租户3用电量(度):</label>
-        <input class="form-control" id="tenant2Usage" v-model.number="tenant3Usage" />
+        <label class="form-label" for="tenant3Usage">租户3用电量(度):</label>
+        <input class="form-control" id="tenant3Usage" v-model.number="tenant3Usage" />
       </div>
 
       <div class="mb-2">
@@ -53,23 +53,20 @@
       <div v-if="showResults">
         <h3>结果:</h3>
 
-        <p>差额度：{{ differences }}</p>
-
         <ul class="list-group">
           <li class="list-group-item">总用量：{{ totalUsage}}</li>
           <li class="list-group-item">平均值：{{ averageUsage }}</li>
 
-          <li class="list-group-item" v-for="(item,index) in differences" :key="index">
-            <span class="badge text-bg-primary">租户{{index+1}}</span>: {{ item > 0? '超过平均值':'低于平均值'}}
+          <li class="list-group-item" v-for="(item, index) in differences" :key="index">
+            <span class="badge text-bg-primary">租户{{index + 1}}</span>: {{ item > 0 ? '超过平均值' : '低于平均值' }}
             {{Math.abs(item)}}
           </li>
-          <!-- {{item > 0 ？`租户${index}超过平均值` : `租户 ${index} 低于平均值`}} {{item}} 度 -->
 
-          <li class="list-group-item" v-for="(item,index) in payments_" :key="index">
+          <li class="list-group-item" v-for="(item, index) in payments" :key="index">
             <span class="badge text-bg-primary">租户{{ item.from }}</span>
             需要支付给
-            <span class="badge text-bg-primary">租户{{item.to}}</span>:
-            <span class="badge text-bg-danger">{{Math.abs(item.amount.toFixed(2))}}</span>元
+            <span class="badge text-bg-primary">租户{{ item.to }}</span>:
+            <span class="badge text-bg-danger">{{ Math.abs(item.amount).toFixed(2) }}</span>元
           </li>
         </ul>
       </div>
@@ -83,22 +80,12 @@
           const showResults = ref(false)
           const pricePerUnit = ref(0.5)
 
-          const tenant1Usage = ref(34)
-          const tenant2Usage = ref(28)
-          const tenant3Usage = ref(29)
-
-          const tenant1Payment = ref(0)
-          const tenant2Payment = ref(0)
-          const tenant3Payment = ref(0)
-          const paymentDetails = ref([])
-
-          const usage = reactive([tenant1Usage.value, tenant2Usage.value, tenant3Usage.value])
+          const tenant1Usage = ref(30)
+          const tenant2Usage = ref(20)
+          const tenant3Usage = ref(30)
 
           const totalUsage = computed(() => {
-            return [tenant1Usage.value, tenant2Usage.value, tenant3Usage.value].reduce(
-              (sum, current) => sum + current,
-              0
-            )
+            return tenant1Usage.value + tenant2Usage.value + tenant3Usage.value
           })
 
           const averageUsage = computed(() => {
@@ -113,62 +100,50 @@
             ]
           })
 
-          const payments_ = ref()
+          const payments = ref([])
+
           function calculate() {
+            // 重置支付关系和结果显示
+            payments.value = []
+            showResults.value = false
+
             // 转换输入值为数值
             const [t1, t2, t3] = [tenant1Usage.value, tenant2Usage.value, tenant3Usage.value].map(Number)
             const ppu = Number(pricePerUnit.value)
 
-            // 计算支付金额
-            let payments = []
-            console.log('计算支付金额', differences.value)
-            for (let i = 0; i < 3; i++) {
-              for (let j = i + 1; j < 3; j++) {
-                if (differences.value[i] > 0 && differences.value[j] < 0) {
-                  // const payment = (differences.value[i] - differences.value[j]) * ppu
-                  const payment = differences.value[j] * ppu
-                  payments.push({
-                    from: i + 1,
-                    to: j + 1,
-                    amount: payment,
-                  })
-                }
+            // 初始化支付数组
+            let positiveDiffs = []
+            let negativeDiffs = []
+
+            differences.value.forEach((diff, index) => {
+              if (diff > 0) {
+                positiveDiffs.push({ index: index + 1, diff: diff })
+              } else if (diff < 0) {
+                negativeDiffs.push({ index: index + 1, diff: Math.abs(diff) })
               }
-            }
-            console.log('payments', payments)
-            payments_.value = payments
+            })
 
-            // 设置每个租户的支付金额
-            tenant1Payment.value = payments.reduce((sum, p) => (p.from === 1 ? sum + p.amount : sum), 0)
-            tenant2Payment.value = payments.reduce((sum, p) => (p.from === 2 ? sum + p.amount : sum), 0)
-            tenant3Payment.value = payments.reduce((sum, p) => (p.from === 3 ? sum + p.amount : sum), 0)
+            // 计算支付金额
+            positiveDiffs.forEach(pos => {
+              negativeDiffs.forEach(neg => {
+                if (pos.diff > 0 && neg.diff > 0) {
+                  const paymentAmount = Math.min(pos.diff, neg.diff) * ppu
+                  payments.value.push({
+                    from: neg.index,
+                    to: pos.index,
+                    amount: paymentAmount,
+                  })
+                  pos.diff -= paymentAmount / ppu
+                  neg.diff -= paymentAmount / ppu
+                }
+              })
+            })
 
-            let str = `
-              <p>
-                租户1需要支付 ${tenant1Payment.value.toFixed(2)} 元
-              </p>
-              <p>
-                租户2需要支付 ${tenant2Payment.value.toFixed(2)} 元
-              </p>
-              <p>
-                租户3需要支付 ${tenant3Payment.value.toFixed(2)} 元
-              </p>
-            `
-
-            console.log(tenant1Payment.value, tenant2Payment.value, tenant3Payment.value)
             // 显示结果
             showResults.value = true
           }
-          // calculate()
-
-          function generateDetail(payment) {
-            if (payment == 0) {
-              return '不用补差额'
-            }
-          }
 
           return {
-            usage,
             tenant1Usage,
             tenant2Usage,
             tenant3Usage,
@@ -176,7 +151,7 @@
             totalUsage,
             averageUsage,
             differences,
-            payments_,
+            payments,
             calculate,
             showResults,
           }
