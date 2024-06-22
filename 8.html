@@ -7,32 +7,44 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/bignumber.js/9.1.2/bignumber.js"></script>
     <!-- 新 Bootstrap 核心 CSS 文件 -->
-
     <link href="https://cdn.staticfile.net/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet" />
-
     <!-- jQuery文件。务必在bootstrap.min.js 之前引入 -->
-
     <script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
-
     <!-- 最新的 Bootstrap 核心 JavaScript 文件 -->
-
     <script src="https://cdn.staticfile.net/bootstrap/5.3.2/js/bootstrap.min.js"></script>
   </head>
   <body>
     <div id="app" class="container">
       <h2 class="text-center my-3">电费差价计算器</h2>
-      <div class="mb-2">
-        <label for="tenant1Usage" class="form-label">租户1用电量(度):</label>
-        <input class="form-control" id="tenant1Usage" v-model.number="tenant1Usage" />
-      </div>
-      <div class="mb-2">
-        <label class="form-label" for="tenant2Usage">租户2用电量(度):</label>
-        <input class="form-control" id="tenant2Usage" v-model.number="tenant2Usage" />
-      </div>
-
-      <div class="mb-2">
-        <label class="form-label" for="tenant3Usage">租户3用电量(度):</label>
-        <input class="form-control" id="tenant3Usage" v-model.number="tenant3Usage" />
+      <div v-for="(tenant, index) in tenants" :key="index" class="mb-2">
+        <h4 class="me-3">租户{{ index + 1 }}:</h4>
+        <div class="d-flex flex-wrap align-items-center">
+          <div class="me-3">
+            <label :for="'previousReading' + index" class="form-label">上次读数:</label>
+            <input
+              class="form-control"
+              :id="'previousReading' + index"
+              v-model.number="tenant.previousReading"
+              style="width: 100px" />
+          </div>
+          <div class="me-3">
+            <label :for="'currentReading' + index" class="form-label">本次读数:</label>
+            <input
+              class="form-control"
+              :id="'currentReading' + index"
+              v-model.number="tenant.currentReading"
+              style="width: 100px" />
+          </div>
+          <div>
+            <label :for="'usage' + index" class="form-label">用电量(度):</label>
+            <input
+              class="form-control"
+              :id="'usage' + index"
+              :value="calculateUsage(tenant.previousReading, tenant.currentReading)"
+              disabled
+              style="width: 100px" />
+          </div>
+        </div>
       </div>
 
       <div class="mb-2">
@@ -58,13 +70,12 @@
           <li class="list-group-item">平均值：{{ averageUsage }}</li>
 
           <li class="list-group-item" v-for="(item, index) in differences" :key="index">
-            <span class="badge text-bg-primary">租户{{index + 1}}</span>: {{ item > 0 ? '超过平均值' : '低于平均值' }}
-            {{Math.abs(item)}}
+            <span class="badge text-bg-primary">租户{{ index + 1 }}</span>: {{ item > 0 ? '超过平均值' : '低于平均值' }}
+            {{ Math.abs(item) }}
           </li>
 
           <li class="list-group-item" v-for="(item, index) in payments" :key="index">
-            <span class="badge text-bg-primary">租户{{ item.from }}</span>
-            需要支付给
+            <span class="badge text-bg-primary">租户{{ item.from }}</span> 需要支付给
             <span class="badge text-bg-primary">租户{{ item.to }}</span>:
             <span class="badge text-bg-danger">{{ Math.abs(item.amount).toFixed(2) }}</span>元
           </li>
@@ -78,26 +89,33 @@
       const app = createApp({
         setup() {
           const showResults = ref(false)
-          const pricePerUnit = ref(0.5)
+          const pricePerUnit = ref(0.56)
 
-          const tenant1Usage = ref(30)
-          const tenant2Usage = ref(20)
-          const tenant3Usage = ref(30)
+          const tenants = reactive([
+            { previousReading: 1, currentReading: 30 },
+            { previousReading: 2, currentReading: 20 },
+            { previousReading: 3, currentReading: 30 },
+          ])
+
+          const calculateUsage = (previous, current) => {
+            return Math.max(0, current - previous)
+          }
 
           const totalUsage = computed(() => {
-            return tenant1Usage.value + tenant2Usage.value + tenant3Usage.value
+            return tenants.reduce((sum, tenant) => {
+              return sum + calculateUsage(tenant.previousReading, tenant.currentReading)
+            }, 0)
           })
 
           const averageUsage = computed(() => {
-            return new BigNumber(totalUsage.value).dividedBy(3).toFixed(2)
+            return new BigNumber(totalUsage.value).dividedBy(tenants.length).toFixed(2)
           })
 
           const differences = computed(() => {
-            return [
-              Number(BigNumber(tenant1Usage.value).minus(averageUsage.value)),
-              Number(BigNumber(tenant2Usage.value).minus(averageUsage.value)),
-              Number(BigNumber(tenant3Usage.value).minus(averageUsage.value)),
-            ]
+            return tenants.map(tenant => {
+              const usage = calculateUsage(tenant.previousReading, tenant.currentReading)
+              return Number(BigNumber(usage).minus(averageUsage.value))
+            })
           })
 
           const payments = ref([])
@@ -107,8 +125,6 @@
             payments.value = []
             showResults.value = false
 
-            // 转换输入值为数值
-            const [t1, t2, t3] = [tenant1Usage.value, tenant2Usage.value, tenant3Usage.value].map(Number)
             const ppu = Number(pricePerUnit.value)
 
             // 初始化支付数组
@@ -144,15 +160,14 @@
           }
 
           return {
-            tenant1Usage,
-            tenant2Usage,
-            tenant3Usage,
+            tenants,
             pricePerUnit,
             totalUsage,
             averageUsage,
             differences,
             payments,
             calculate,
+            calculateUsage,
             showResults,
           }
         },
