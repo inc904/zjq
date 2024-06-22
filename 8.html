@@ -70,8 +70,11 @@
           <li class="list-group-item">平均值：{{ averageUsage.toFixed(2) }}</li>
 
           <li class="list-group-item" v-for="(item, index) in differences" :key="index">
-            <span class="badge text-bg-primary">租户{{ index + 1 }}</span>: {{ item.gt(0) ? '超过平均值' : '低于平均值' }}
-            {{ item.abs().toFixed(2) }}
+            <span class="badge text-bg-primary">租户{{ index + 1 }}</span>:
+            {{ item.gt(0) ? '超过平均值' : '低于平均值' }} {{ item.abs().toFixed(2) }}
+            <span class="badge bg-secondary ms-2">
+              ({{ item.abs().toFixed(2) }} 度 * {{ pricePerUnit.toFixed(2) }} 元/度 = {{ item.abs().times(pricePerUnit).toFixed(2) }} 元)
+            </span>
           </li>
 
           <li class="list-group-item" v-for="(item, index) in payments" :key="index">
